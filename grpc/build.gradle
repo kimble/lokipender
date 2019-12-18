@@ -1,0 +1,49 @@
+apply plugin: 'kotlin'
+apply plugin: 'com.google.protobuf'
+
+// Generate IntelliJ IDEA's .idea & .iml project files.
+// protobuf-gradle-plugin automatically registers *.proto and the gen output files
+// to IntelliJ as sources.
+// For best results, install the Protobuf and Kotlin plugins for IntelliJ.
+apply plugin: 'idea'
+
+buildscript {
+  ext.kotlin_version = '1.3.61'
+
+  repositories {
+    jcenter()
+  }
+  dependencies {
+    classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.10'
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+  }
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+  compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+  compile 'com.google.protobuf:protobuf-java:3.11.1'
+  compile group: 'io.grpc', name: 'grpc-stub', version: '1.25.0'
+  compile group: 'io.grpc', name: 'grpc-protobuf', version: '1.25.0'
+
+  compile group: 'javax.annotation', name: 'javax.annotation-api', version: '1.3.2'
+
+
+  protobuf 'com.google.protobuf:protobuf-java:3.0.2'
+
+  // The rest of the projects dep are added below, refer to example URL
+}
+
+// The standard protobuf block, same as normal gRPC Java projects
+protobuf {
+  protoc { artifact = 'com.google.protobuf:protoc:3.11.2' }
+    plugins {
+      grpc { artifact = "io.grpc:protoc-gen-grpc-java:1.25.0" }
+    }
+    generateProtoTasks {
+      all()*.plugins { grpc {} }
+    }
+}
