@@ -2,65 +2,56 @@ package com.github.kimble.lokipender
 
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.AppenderBase
+import ch.qos.logback.core.encoder.Encoder
 import com.google.protobuf.Timestamp
+import io.grpc.ManagedChannel
+import io.grpc.ManagedChannelBuilder
 import logproto.Logproto
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.xerial.snappy.Snappy
+import logproto.PusherGrpc
 import java.io.Closeable
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
-class LokiAppender(
-        val lokiRootUri: String
+class LokiAppender : Closeable, AppenderBase<ILoggingEvent>() {
 
-) : Closeable, AppenderBase<ILoggingEvent>() {
+    lateinit var host: String
+    var port: Int = -1
 
+    lateinit var componentName : String
 
-    private lateinit var ok: OkHttpClient
+    lateinit var encoder : Encoder<ILoggingEvent>
 
-    private val pushRequestBuilder = Request.Builder()
-            .url("$lokiRootUri/loki/api/v1/push")
-            .build()
+    private lateinit var channel: ManagedChannel
 
-    private val protobuf = "application/x-protobuf".toMediaType()
+    private lateinit var pusher: PusherGrpc.PusherFutureStub
+
 
     override fun start() {
-        ok = OkHttpClient.Builder()
-                .callTimeout(2, TimeUnit.SECONDS)
+        channel = ManagedChannelBuilder.forAddress(host, port)
+                .usePlaintext()
                 .build()
+
+        pusher = PusherGrpc.newFutureStub(channel)
 
         super.start()
     }
 
     override fun stop() {
-        ok.dispatcher.executorService.shutdown();
-        ok.connectionPool.evictAll();
-        ok.cache?.close();
-
+        channel.shutdown().awaitTermination(2, TimeUnit.SECONDS)
         super.stop()
     }
 
-    override fun append(eventObject: ILoggingEvent?) {
-
-        val request = Logproto.PushRequest.newBuilder()
-                .build()
-
-
+    override fun append(eventObject: ILoggingEvent) {
+        write(
+                timestamp = Instant.ofEpochMilli(eventObject.timeStamp),
+                line = encoder.encode(eventObject).toString(Charsets.UTF_8)
+        )
     }
 
-    override fun close() {
-        stop()
-    }
-
-    fun write(line: String) {
-        val timestamp = Instant.now()
-
+    private fun write(timestamp: Instant, line: String) {
         val pushRequest = Logproto.PushRequest.newBuilder()
                 .addStreams(Logproto.Stream.newBuilder()
-                        .setLabels("""{component="junit"}""")
+                        .setLabels("""{component="$componentName"}""")
                         .addEntries(Logproto.Entry.newBuilder()
                                 .setTimestamp(Timestamp.newBuilder()
                                         .setSeconds(timestamp.epochSecond)
@@ -71,20 +62,17 @@ class LokiAppender(
                         .build())
                 .build()
 
-        val uncompressed = pushRequest.toByteArray()
-        val compressed = Snappy.compress(uncompressed)
+        val promise = pusher.push(pushRequest)
 
-        println("${uncompressed.size} -> ${compressed.size} bytes")
-
-        val call = ok.newCall(pushRequestBuilder.newBuilder()
-                .post(compressed.toRequestBody(protobuf))
-                .build())
-
-
-        call.execute().use {
-            println(" -> $it: ${it.body?.string()}")
+        try {
+            promise.get()
+        } catch (ex: Exception) {
+            addError("Loki append failure", ex)
         }
+    }
 
+    override fun close() {
+        stop()
     }
 
 }
