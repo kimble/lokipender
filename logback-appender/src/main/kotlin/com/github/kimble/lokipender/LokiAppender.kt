@@ -12,7 +12,7 @@ import java.io.Closeable
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
-class LokiAppender : Closeable, AppenderBase<ILoggingEvent>() {
+class LokiAppender<E> : Closeable, AppenderBase<E>() {
 
     lateinit var host: String
     var port: Int = -1
@@ -41,11 +41,13 @@ class LokiAppender : Closeable, AppenderBase<ILoggingEvent>() {
         super.stop()
     }
 
-    override fun append(eventObject: ILoggingEvent) {
-        write(
-                timestamp = Instant.ofEpochMilli(eventObject.timeStamp),
-                line = encoder.encode(eventObject).toString(Charsets.UTF_8)
-        )
+    override fun append(eventObject: E) {
+        if (eventObject is ILoggingEvent) {
+            write(
+                    timestamp = Instant.ofEpochMilli(eventObject.timeStamp),
+                    line = encoder.encode(eventObject).toString(Charsets.UTF_8)
+            )
+        }
     }
 
     private fun write(timestamp: Instant, line: String) {
