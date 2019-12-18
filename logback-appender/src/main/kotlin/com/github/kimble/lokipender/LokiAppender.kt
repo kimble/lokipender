@@ -2,7 +2,6 @@ package com.github.kimble.lokipender
 
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.AppenderBase
-import ch.qos.logback.core.encoder.Encoder
 import com.google.protobuf.Timestamp
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
@@ -18,8 +17,6 @@ class LokiAppender<E> : Closeable, AppenderBase<E>() {
     var port: Int = -1
 
     lateinit var componentName : String
-
-    lateinit var encoder : Encoder<ILoggingEvent>
 
     private lateinit var channel: ManagedChannel
 
@@ -43,9 +40,11 @@ class LokiAppender<E> : Closeable, AppenderBase<E>() {
 
     override fun append(eventObject: E) {
         if (eventObject is ILoggingEvent) {
+            val message = """level="${eventObject.level.levelStr}" logger="${eventObject.loggerName}" msg="${eventObject.formattedMessage}" """
+
             write(
                     timestamp = Instant.ofEpochMilli(eventObject.timeStamp),
-                    line = encoder.encode(eventObject).toString(Charsets.UTF_8)
+                    line = message
             )
         }
     }

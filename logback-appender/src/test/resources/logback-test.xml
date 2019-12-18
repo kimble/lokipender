@@ -10,10 +10,6 @@
         <componentName>junit</componentName>
         <host>localhost</host>
         <port>9095</port>
-
-        <encoder>
-            <pattern>level="%level" thread="%thread" logger="%logger{36}" message="%msg"%n</pattern>
-        </encoder>
     </appender>
 
     <root level="info">
