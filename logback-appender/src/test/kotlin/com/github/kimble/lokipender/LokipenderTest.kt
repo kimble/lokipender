@@ -12,7 +12,7 @@ class LokipenderTest {
     @Test
     internal fun name2() {
         repeat(1000000) {
-            log.info("Logging line number $it to Loki")
+            log.error("Logging line number $it to Loki", Exception("Bare en test"))
         }
     }
 
