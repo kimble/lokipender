@@ -1,19 +1,21 @@
 <configuration debug="true">
 
+    <shutdownHook />
+
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <appender name="lokipender" class="com.github.kimble.lokipender.LokiAppender">
+    <appender name="lokipender" class="com.github.kimble.lokipender.Lokipender">
         <componentName>junit</componentName>
         <host>localhost</host>
         <port>9095</port>
     </appender>
 
     <root level="info">
-        <appender-ref ref="STDOUT" />
+       <!-- <appender-ref ref="STDOUT" /> -->
         <appender-ref ref="lokipender" />
     </root>
 </configuration>
