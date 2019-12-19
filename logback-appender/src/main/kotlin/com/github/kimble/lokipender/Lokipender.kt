@@ -21,6 +21,7 @@ import kotlinx.coroutines.withTimeout
 import logproto.Logproto
 import logproto.PusherGrpc
 import java.io.Closeable
+import java.net.InetAddress
 import java.time.Instant
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -34,6 +35,8 @@ class Lokipender<E> : Closeable, CoroutineScope, AppenderBase<E>() {
         get() = Executors.newSingleThreadExecutor { r -> Thread(r, "lokipender") }.asCoroutineDispatcher() + job
 
     private val job: Job = Job()
+
+    var hostname = InetAddress.getLocalHost().hostName
 
     var gracefulShutdownMillis = 5000L
 
@@ -63,7 +66,7 @@ class Lokipender<E> : Closeable, CoroutineScope, AppenderBase<E>() {
                 try {
                     pusher.push(Logproto.PushRequest.newBuilder()
                             .addStreams(Logproto.Stream.newBuilder()
-                                    .setLabels("""{component="$componentName"}""")
+                                    .setLabels("""{component="$componentName", hostname="$hostname"}""")
                                     .addAllEntries(buffer.map { toProtobuf(it) })
                                     .build())
                             .build())
